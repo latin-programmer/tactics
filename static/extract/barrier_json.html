@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset=utf-8 />
+  <title>rotated text using transform vs blit from offscreen</title>
+	<script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+  <style>
+    html, body { height: 100% }
+    body { display: flex; align-items: center; justify-content: center; }
+    canvas { border: 1px solid #ccc; display: block; }
+  </style>
+</head>
+<body>
+  <canvas id="main"></canvas>
+  <script>
+    // setup
+    var canvas = document.getElementById('main');
+    var context = canvas.getContext('2d');
+
+    $.getJSON('extracted/barrier.min.json').then(run_animation);
+
+    function run_animation(data) {
+      canvas.width = data.width;
+      canvas.height = data.height;
+
+      // First load all the images.
+      data.images.forEach((src, i) => {
+        let image = new Image();
+        image.src = src;
+
+        data.images[i] = image;
+      });
+
+      // Expand shape data for efficient animation.
+      data.frames.forEach(frame => {
+        frame.forEach(shape => {
+          if ('s' in shape) {
+            shape.sx = shape.sy = shape.s;
+          }
+          else {
+            if (!('sx' in shape)) shape.sx = 1;
+            if (!('sy' in shape)) shape.sy = 1;
+          }
+
+          if ('r' in shape) {
+            shape.rx = shape.ry = shape.r;
+          }
+          else {
+            if (!('rx' in shape)) shape.rx = 0;
+            if (!('ry' in shape)) shape.ry = 0;
+          }
+
+          if (!('x' in shape)) shape.x = 0;
+          if (!('y' in shape)) shape.y = 0;
+
+          if ('i' in shape)
+            shape.i = data.images[shape.i];
+        });
+      });
+
+      // Run the animation once all images are loaded.
+      let index = 0;
+      setInterval(() => render_frame(data, index++), 83);
+    }
+
+    function render_frame (data, index) {
+      index = index % data.frames.length;
+      console.log(index);
+
+      context.fillStyle = '#DDDDDD';
+      context.fillRect(0, 0, data.width, data.height);
+
+      data.frames[index].forEach(shape => {
+        context.save();
+        context.transform(shape.sx, shape.rx, shape.ry, shape.sy, shape.x, shape.y);
+
+        if ('i' in shape) {
+          context.fillStyle = context.createPattern(shape.i, 'no-repeat');
+          context.fillRect(0, 0, data.width, data.height);
+        }
+
+        context.restore();
+      });
+    }
+  </script>
+</body>
+</html>
